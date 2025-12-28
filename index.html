@@ -186,9 +186,9 @@
 
                 const subjects = ref(JSON.parse(localStorage.getItem('vet_subjects')) || [
                     { name: '英文', progress: 0, icon: 'fas fa-font', color: 'bg-[#D2B48C]', barColor: 'bg-[#D2B48C]' },
-                    { name: '生物學', progress: 0, icon: 'fas fa-dna', color: 'bg-[#C3B091]', barColor: 'bg-[#C3B091]' },
+                    { name: '生物學（含植物學）', progress: 0, icon: 'fas fa-dna', color: 'bg-[#C3B091]', barColor: 'bg-[#C3B091]' },
                     { name: '生物化學', progress: 0, icon: 'fas fa-heartbeat', color: 'bg-[#E2C2B9]', barColor: 'bg-[#E2C2B9]' },
-                    { name: '化學', progress: 0, icon: 'fas fa-bone', color: 'bg-[#B5C7D3]', barColor: 'bg-[#B5C7D3]' }
+                    { name: '化學（含普通、有機化學）', progress: 0, icon: 'fas fa-bone', color: 'bg-[#B5C7D3]', barColor: 'bg-[#B5C7D3]' }
                 ]);
                 const favorites = ref(JSON.parse(localStorage.getItem('vet_favorites')) || []);
                 const errorLog = ref(JSON.parse(localStorage.getItem('vet_errors')) || []);
