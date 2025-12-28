@@ -71,6 +71,38 @@
                 </div>
             </section>
 
+<div class="mb-4 relative">
+    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <i class="fas fa-search text-gray-400"></i>
+    </div>
+    <input 
+        v-model="searchQuery" 
+        type="text" 
+        placeholder="搜尋關鍵字（例如：狂犬病、肌肉...）" 
+        class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl bg-white shadow-sm focus:ring-[#C3B091] focus:border-[#C3B091] text-sm"
+    >
+</div>
+
+<div v-if="searchQuery" class="space-y-3 mb-6">
+    <div class="flex justify-between items-center px-1">
+        <h3 class="text-sm font-bold text-gray-500">搜尋結果 ({{ searchedQuestions.length }})</h3>
+        <button @click="searchQuery = ''" class="text-xs text-blue-500">清除搜尋</button>
+    </div>
+    
+    <div v-for="q in searchedQuestions" :key="'search-'+q.id" 
+         @click="startSearchQuiz(q)"
+         class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm active:scale-95 transition-transform">
+        <div class="flex justify-between items-start mb-1">
+            <span class="text-[10px] bg-[#F9F6F0] text-[#C3B091] px-2 py-0.5 rounded">{{ q.subject }} | {{ q.year }}年</span>
+        </div>
+        <p class="text-sm text-gray-700 line-clamp-2">{{ q.text }}</p>
+    </div>
+    <div v-if="searchedQuestions.length === 0" class="text-center py-4 text-gray-400 text-xs">
+        找不到包含「{{ searchQuery }}」的題目
+    </div>
+</div>
+
+
             <section v-if="currentTab === 'quiz'">
                 <div v-if="!activeSubject" class="grid grid-cols-1 gap-4">
                     <button v-for="sub in subjects" @click="selectSubject(sub.name)" class="bg-white p-6 rounded-2xl border-2 border-gray-50 flex items-center justify-between shadow-sm">
@@ -171,6 +203,8 @@
         const { createApp, ref, computed, watch } = Vue;
         createApp({
             setup() {
+
+
                 const currentTab = ref('home');
                 const activeSubject = ref(null);
                 const activeYear = ref(null);
@@ -183,6 +217,32 @@
                 const correctCount = ref(0);
                 const timer = ref(600);
                 let timerInterval = null;
+
+// ✅ 搜尋功能變數
+const searchQuery = ref('');
+
+const searchedQuestions = computed(() => {
+    if (!searchQuery.value.trim()) return [];
+    const query = searchQuery.value.toLowerCase();
+    return allQuestions.value.filter(q => 
+        q.text.toLowerCase().includes(query) || 
+        (q.passage && q.passage.toLowerCase().includes(query)) ||
+        (q.explanation && q.explanation.toLowerCase().includes(query))
+    ).slice(0, 10);
+});
+
+const startSearchQuiz = (question) => {
+    activeSubject.value = question.subject;
+    activeYear.value = question.year;
+    currentTab.value = 'quiz'; // 確保跳轉到測驗頁面
+    setTimeout(() => {
+        const index = filteredQuestions.value.findIndex(q => q.id === question.id);
+        jumpToQuestion(index !== -1 ? index : 0);
+        searchQuery.value = ''; 
+        startTimer();
+    }, 100);
+};
+
 
                 const subjects = ref(JSON.parse(localStorage.getItem('vet_subjects')) || [
                     { name: '英文', progress: 0, icon: 'fas fa-font', color: 'bg-[#D2B48C]', barColor: 'bg-[#D2B48C]' },
@@ -202,6 +262,9 @@
                     localStorage.setItem('vet_errors', JSON.stringify(errorLog.value));
                     localStorage.setItem('vet_history', JSON.stringify(quizHistory.value));
                 }, { deep: true });
+
+
+
 
                 const allQuestions = ref([
     // --- 第一部分：單句文法與詞彙 (1-60題) ---
@@ -561,13 +624,17 @@
                 const resetAllData = () => { if(confirm("確定重置紀錄？")) { localStorage.clear(); location.reload(); } };
 
                 return { 
-                    currentTab, activeSubject, activeYear, subjects, totalProgress, filterSub, showNavigator, 
-                    favorites, errorLog, filteredQuestions, currentQuestion, currentQuestionIndex,
-                    selectedOption, showFeedback, quizFinished, timer, correctCount, availableYears,
-                    selectSubject, selectYear, goBack, jumpToQuestion, selectOption, getOptionClass, nextQuestion, 
-                    toggleFavorite, isFavorited, getFilteredItems, formatTime, resetAllData, getQuestionCount,
-                    getHistory
-                };
+    currentTab, activeSubject, activeYear, subjects, totalProgress, filterSub, showNavigator, 
+    favorites, errorLog, filteredQuestions, currentQuestion, currentQuestionIndex,
+    selectedOption, showFeedback, quizFinished, timer, correctCount, availableYears,
+    selectSubject, selectYear, goBack, jumpToQuestion, selectOption, getOptionClass, nextQuestion, 
+    toggleFavorite, isFavorited, getFilteredItems, formatTime, resetAllData, getQuestionCount,
+    getHistory,
+    searchQuery,
+    searchedQuestions,
+    startSearchQuiz
+};
+
             }
         }).mount('#app');
     </script>
