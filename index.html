@@ -71,7 +71,7 @@
                 </div>
             </section>
 
-<div class="mb-4 relative">
+<div v-if="currentTab !== 'home'" class="mb-4 relative">
     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
         <i class="fas fa-search text-gray-400"></i>
     </div>
@@ -163,10 +163,18 @@
                         </button>
                     </div>
 
-                    <div v-if="showFeedback" class="mt-6">
-                        <div class="p-4 bg-[#F9F6F0] border rounded-xl text-sm text-[#82786E] mb-4">{{ currentQuestion.explanation }}</div>
-                        <button @click="nextQuestion" class="w-full bg-[#C3B091] text-white py-4 rounded-xl font-bold shadow-lg">下一題</button>
-                    </div>
+                    <div class="mt-6">
+    <div v-if="!isMockMode && showFeedback" class="p-4 bg-[#F9F6F0] border rounded-xl text-sm text-[#82786E] mb-4">
+        {{ currentQuestion.explanation }}
+    </div>
+
+    <button v-if="isMockMode ? userAnswers[currentQuestionIndex] !== undefined : showFeedback" 
+        @click="nextQuestion" 
+        class="w-full bg-[#C3B091] text-white py-4 rounded-xl font-bold shadow-lg">
+        {{ currentQuestionIndex + 1 === filteredQuestions.length ? '查看結果' : '下一題' }}
+    </button>
+</div>
+
                 </div>
 
                 <div v-else class="text-center py-10">
@@ -191,12 +199,43 @@
         </main>
 
         <nav class="fixed bottom-0 max-w-md w-full bg-white border-t flex justify-around items-center py-2 shadow-lg z-40 safe-area-bottom">
-            <button v-for="tab in [{id:'home', icon:'chart-pie', n:'進度'}, {id:'quiz', icon:'pencil-alt', n:'測驗'}, {id:'favorites', icon:'star', n:'收藏'}, {id:'errors', icon:'book-open', n:'錯題'}]" 
-                @click="currentTab = tab.id; activeSubject = null; activeYear = null" :class="currentTab === tab.id ? 'text-[#C3B091]' : 'text-gray-400'" class="flex flex-col items-center flex-1">
-                <i :class="'fas fa-' + tab.icon" class="text-lg"></i>
-                <span class="text-[10px] mt-1 font-bold">{{ tab.n }}</span>
-            </button>
-        </nav>
+    <button @click="currentTab = 'home'; isMockMode = false; activeSubject = null;" 
+        :class="currentTab === 'home' ? 'text-[#C3B091]' : 'text-gray-400'" class="flex flex-col items-center flex-1">
+        <i class="fas fa-chart-pie text-lg"></i>
+        <span class="text-[10px] mt-1 font-bold">進度</span>
+    </button>
+    
+    <button @click="currentTab = 'quiz'; isMockMode = false; activeSubject = null;" 
+        :class="currentTab === 'quiz' && !isMockMode ? 'text-[#C3B091]' : 'text-gray-400'" class="flex flex-col items-center flex-1">
+        <i class="fas fa-pencil-alt text-lg"></i>
+        <span class="text-[10px] mt-1 font-bold">測驗</span>
+    </button>
+
+    <button @click="currentTab = 'quiz'; isMockMode = true; activeSubject = null;" 
+        :class="currentTab === 'quiz' && isMockMode ? 'text-[#C3B091]' : 'text-gray-400'" class="flex flex-col items-center flex-1">
+        <div class="relative">
+            <i class="fas fa-stopwatch-20 text-lg"></i>
+            <span class="absolute -top-1 -right-1 flex h-2 w-2">
+                <span class="animate-ping absol， ute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            </span>
+        </div>
+        <span class="text-[10px] mt-1 font-bold">模擬考</span>
+    </button>
+
+    <button @click="currentTab = 'favorites'; isMockMode = false; activeSubject = null;" 
+        :class="currentTab === 'favorites' ? 'text-[#C3B091]' : 'text-gray-400'" class="flex flex-col items-center flex-1">
+        <i class="fas fa-star text-lg"></i>
+        <span class="text-[10px] mt-1 font-bold">收藏</span>
+    </button>
+
+    <button @click="currentTab = 'errors'; isMockMode = false; activeSubject = null;" 
+        :class="currentTab === 'errors' ? 'text-[#C3B091]' : 'text-gray-400'" class="flex flex-col items-center flex-1">
+        <i class="fas fa-book-open text-lg"></i>
+        <span class="text-[10px] mt-1 font-bold">錯題</span>
+    </button>
+</nav>
+
     </div>
 
     <script>
@@ -218,7 +257,9 @@
                 const timer = ref(600);
                 let timerInterval = null;
 
-// ✅ 搜尋功能變數
+    const isMockMode = ref(false); 
+    const userAnswers = ref({});   
+
 const searchQuery = ref('');
 
 const searchedQuestions = computed(() => {
@@ -581,26 +622,39 @@ const startSearchQuiz = (question) => {
                     showNavigator.value = false;
                 };
 
-                const selectOption = (idx) => {
-                    selectedOption.value = idx;
-                    showFeedback.value = true;
-                    if (idx === currentQuestion.value.correct) {
-                        correctCount.value++;
-                        const sub = subjects.value.find(s => s.name === activeSubject.value);
-                        if (sub) sub.progress = Math.min(100, sub.progress + 0.5);
-                    } else {
-                        if (!errorLog.value.some(e => e.id === currentQuestion.value.id)) {
-                            errorLog.value.push(currentQuestion.value);
-                        }
-                    }
-                };
+const selectOption = (idx) => {
+    if (isMockMode.value) {
+        // 模擬考：僅紀錄答案，不顯示對錯
+        userAnswers.value[currentQuestionIndex.value] = idx;
+    } else {
+        // 普通測驗：原有的即時回饋邏輯
+        selectedOption.value = idx;
+        showFeedback.value = true;
+        if (idx === currentQuestion.value.correct) {
+            correctCount.value++;
+            const sub = subjects.value.find(s => s.name === activeSubject.value);
+            if (sub) sub.progress = Math.min(100, sub.progress + 0.5);
+        } else {
+            if (!errorLog.value.some(e => e.id === currentQuestion.value.id)) {
+                errorLog.value.push(currentQuestion.value);
+            }
+        }
+    }
+};
 
-                const getOptionClass = (idx) => {
-                    if (!showFeedback.value) return selectedOption.value === idx ? 'border-[#C3B091] bg-[#F9F6F0]' : 'border-gray-100';
-                    if (idx === currentQuestion.value.correct) return 'border-emerald-500 bg-emerald-50';
-                    if (selectedOption.value === idx) return 'border-red-500 bg-red-50';
-                    return 'border-gray-50 opacity-50';
-                };
+
+const getOptionClass = (idx) => {
+    if (isMockMode.value) {
+        // 模擬考：選中變褐色，但不顯示紅/綠色
+        return userAnswers.value[currentQuestionIndex.value] === idx ? 'border-[#C3B091] bg-[#F9F6F0]' : 'border-gray-100';
+    }
+    // 原有邏輯
+    if (!showFeedback.value) return selectedOption.value === idx ? 'border-[#C3B091] bg-[#F9F6F0]' : 'border-gray-100';
+    if (idx === currentQuestion.value.correct) return 'border-emerald-500 bg-emerald-50';
+    if (selectedOption.value === idx) return 'border-red-500 bg-red-50';
+    return 'border-gray-50 opacity-50';
+};
+
 
                 const nextQuestion = () => {
                     if (currentQuestionIndex.value + 1 < filteredQuestions.value.length) {
@@ -632,7 +686,11 @@ const startSearchQuiz = (question) => {
     getHistory,
     searchQuery,
     searchedQuestions,
-    startSearchQuiz
+    startSearchQuiz,
+    isMockMode,
+userAnswers, 
+currentTab, 
+activeSubject
 };
 
             }
