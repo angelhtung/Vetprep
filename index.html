@@ -190,11 +190,26 @@
                         class="flex-1 py-2 px-3 rounded-lg text-xs font-bold whitespace-nowrap transition-all">{{ sub.name }}</button>
                 </div>
                 <div v-if="getFilteredItems(currentTab === 'favorites' ? favorites : errorLog).length === 0" class="text-center py-20 text-gray-400 italic">目前沒有紀錄</div>
-                <div v-for="item in getFilteredItems(currentTab === 'favorites' ? favorites : errorLog)" :key="item.id" class="bg-white border-l-4 p-4 rounded-xl shadow-sm mb-3" :class="currentTab === 'favorites' ? 'border-yellow-400' : 'border-red-400'">
-                    <p class="text-[10px] text-gray-400 mb-1">{{ item.year }}年 - {{ item.subject }}</p>
-                    <p class="font-medium text-gray-800">{{ item.text }}</p>
-                    <p class="text-xs text-emerald-600 font-bold mt-2">答案：{{ item.options[item.correct] }}</p>
-                </div>
+                <div v-for="item in getFilteredItems(currentTab === 'favorites' ? favorites : errorLog)" :key="item.id" 
+     class="bg-white border-l-4 p-4 rounded-xl shadow-sm mb-3" 
+     :class="currentTab === 'favorites' ? 'border-yellow-400' : 'border-red-400'">
+    
+    <div class="flex justify-between items-start">
+        <p class="text-[10px] text-gray-400 mb-1">{{ item.year }}年 - {{ item.subject }}</p>
+        
+        <span v-if="currentTab === 'errors' && item.wrongCount" 
+              :class="item.wrongCount >= 3 ? 'bg-red-500 text-white' : 'bg-red-100 text-red-600'" 
+              class="text-[9px] px-2 py-0.5 rounded-full font-bold">
+            {{ item.wrongCount >= 3 ? '重災 ' : '' }}錯 {{ item.wrongCount }} 次
+        </span>
+    </div>
+
+    <p class="font-medium text-gray-800 text-sm">{{ item.text }}</p>
+    
+    <p class="text-xs text-emerald-600 font-bold mt-2">正確答案：{{ item.options[item.correct] }}</p>
+</div>
+
+
             </section>
         </main>
 
@@ -624,23 +639,32 @@ const startSearchQuiz = (question) => {
 
 const selectOption = (idx) => {
     if (isMockMode.value) {
-        // 模擬考：僅紀錄答案，不顯示對錯
         userAnswers.value[currentQuestionIndex.value] = idx;
     } else {
-        // 普通測驗：原有的即時回饋邏輯
         selectedOption.value = idx;
         showFeedback.value = true;
+        
         if (idx === currentQuestion.value.correct) {
             correctCount.value++;
             const sub = subjects.value.find(s => s.name === activeSubject.value);
             if (sub) sub.progress = Math.min(100, sub.progress + 0.5);
         } else {
-            if (!errorLog.value.some(e => e.id === currentQuestion.value.id)) {
-                errorLog.value.push(currentQuestion.value);
+            // ✨ [修改後的錯題統計邏輯]
+            const existingError = errorLog.value.find(e => e.id === currentQuestion.value.id);
+            if (existingError) {
+                // 如果已經在錯題本，次數 +1
+                existingError.wrongCount = (existingError.wrongCount || 1) + 1;
+            } else {
+                // 如果是第一次錯，加入新物件，初始次數為 1
+                errorLog.value.push({
+                    ...currentQuestion.value,
+                    wrongCount: 1
+                });
             }
         }
     }
 };
+
 
 
 const getOptionClass = (idx) => {
@@ -689,8 +713,6 @@ const getOptionClass = (idx) => {
     startSearchQuiz,
     isMockMode,
 userAnswers, 
-currentTab, 
-activeSubject
 };
 
             }
